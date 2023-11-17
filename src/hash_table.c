@@ -1,7 +1,9 @@
 #include "hash_table.h"
+#include <math.h>
 #include <signal.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
 #include <threads.h>
 
 ht_hash_table *ht_new() {
@@ -28,6 +30,16 @@ static void ht_del_hash_table(ht_hash_table *ht) {
   free(ht->items);
   free(ht);
 }
+static int ht_hash(const char* s, const int a, const int m) {
+  long hash = 0;
+  const int lens = strlen(s);
+  for (int i = 0;i < lens ; i++) {
+    hash += (long)pow(a, lens - (i+1)) * s[i];
+    hash = hash % m;
+  }
+  return (int)hash;
+}
+
 int main(){
   ht_hash_table* ht = ht_new();
   ht_del_hash_table(ht);
