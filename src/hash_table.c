@@ -1,4 +1,5 @@
 #include "hash_table.h"
+#include "prime.h"
 #include <math.h>
 #include <signal.h>
 #include <stddef.h>
@@ -8,15 +9,19 @@
 #include <threads.h>
 const int HT_PRIME_1 = 151;
 const int HT_PRIME_2 = 163;
+const int HT_INITIAL_BASE_SIZE = 50;
 static ht_item HT_DELETED_ITEM = {NULL, NULL};
 
-ht_hash_table *ht_new() {
+static ht_hash_table *ht_new_sized(const int base_size) {
   ht_hash_table *ht = malloc(sizeof(ht_hash_table));
-  ht->size = 53;
+  ht->base_size = base_size;
+  ht->size = next_prime(ht->base_size);
   ht->count = 0;
   ht->items = calloc((size_t)ht->size, sizeof(ht_item *));
   return ht;
 }
+
+ht_hash_table *ht_new() { return ht_new_sized(HT_INITIAL_BASE_SIZE); }
 
 static ht_item *ht_new_item(const char *key, const char *value) {
   ht_item *i = malloc(sizeof(ht_item));
@@ -109,6 +114,40 @@ void ht_delete(ht_hash_table *ht, const char *key) {
     i++;
   }
   ht->count--;
+}
+static void ht_resize(ht_hash_table *ht, const int base_size) {
+  if (base_size < HT_INITIAL_BASE_SIZE) {
+    return;
+  }
+  ht_hash_table *new_ht = ht_new_sized(base_size);
+  for (int i = 0; i < ht->size; i++) {
+    ht_item *item = ht->items[i];
+    if (item != NULL & item != &HT_DELETED_ITEM) {
+      ht_insert(new_ht, item->key, item->value);
+    }
+  }
+  ht->base_size = new_ht->base_size;
+  ht->count = new_ht->count;
+
+  const int tmp_size = ht->size;
+  ht->size = new_ht->size;
+  new_ht->size = tmp_size;
+
+  ht_item **tmp_items = ht->items;
+  ht->items = new_ht->items;
+  new_ht->items = tmp_items;
+
+  ht_del_hash_table(new_ht);
+}
+
+static void ht_resize_up(ht_hash_table *ht) {
+  const int new_size = ht->base_size * 2;
+  ht_resize(ht, new_size);
+}
+
+static void ht_resize_down(ht_hash_table *ht) {
+  const int new_size = ht->base_size / 2;
+  ht_resize(ht, new_size);
 }
 
 int main() {
