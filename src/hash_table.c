@@ -62,6 +62,10 @@ static int ht_get_hash(const char *s, const int num_buckets,
   return (hash_a + (attempt * (hash_b + 1))) % num_buckets;
 }
 void ht_insert(ht_hash_table *ht, const char *key, const char *value) {
+  const int load = ht->count * 100 / ht->size;
+  if (load > 70) {
+    ht_resize_up(ht);
+  }
   ht_item *item = ht_new_item(key, value);
   int index = ht_get_hash(item->key, ht->size, 0);
   ht_item *cur_item = ht->items[index];
@@ -100,6 +104,10 @@ char *ht_search(ht_hash_table *ht, const char *key) {
 }
 
 void ht_delete(ht_hash_table *ht, const char *key) {
+  const int load = ht->count * 100 / ht->size;
+  if (load < 10) {
+    ht_resize_down(ht);
+  }
   int index = ht_get_hash(key, ht->size, 0);
   ht_item *item = ht->items[index];
   int i = 1;
